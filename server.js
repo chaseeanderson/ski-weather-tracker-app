@@ -1,38 +1,34 @@
-const express = require("express");
-const cors = require("cors");
-const aws = require("aws-sdk");
-const multer = require("multer");
-const multerS3 = require("multer-s3");
+const express = require('express');
+const path = require('path');
+const favicon = require('serve-favicon');
+const logger = require('morgan');
+// cross-origin resource sharing. Idk if I'll need this
+//const cors = require("cors");
 require("dotenv").config();
 
-// Configure AWS
-aws.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION,
-});
-const s3 = new aws.S3();
+// Connect to the db 
+require('./config/database');
 
-// Configure Multer
-const upload = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.AWS_BUCKET_NAME,
-    acl: "public-read",
-    metadata: (req, file, cb) => {
-      cb(null, { fieldName: file.fieldname });
-    },
-    key: (req, file, cb) => {
-      cb(null, Date.now().toString());
-    },
-  }),
+const app = express();
+
+app.use(logger('dev'));
+app.use(express.json());
+
+// Configure both serve-favicon & static middleware
+// to serve from the production 'build' folder
+app.use(favicon(path.join(__dirname, 'build', 'favicon.ico')));
+app.use(express.static(path.join(__dirname, 'build')));
+
+/* ROUTES */
+
+
+// The following "catch all" route (note the *) is necessary
+// to return the index.html on all non-AJAX requests
+app.get('/*', function(req, res) {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// Routes
-// Route for accepting single file as upload and responds with url of uploaded file in s3
-app.post("/upload", upload.single("file"), (req, res) => {
-  res.json({ fileUrl: req.file.location });
-});
+const port = process.env.PORT || 3001;
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
